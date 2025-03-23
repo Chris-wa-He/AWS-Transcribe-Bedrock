@@ -14,8 +14,7 @@ from config import (
     SUPPORTED_AUDIO_FORMATS,
     DEFAULT_AUDIO_FORMAT,
     BEDROCK_MODEL_ID, 
-    BEDROCK_MAX_TOKENS, 
-    BEDROCK_VERSION,
+    BEDROCK_MAX_TOKENS,
     OPTIMIZATION_PROMPT
 )
 
@@ -101,31 +100,65 @@ def transcribe_audio(s3_uri, audio_path):
         raise Exception(f"转录音频失败: {str(e)}")
 
 def optimize_with_bedrock(text):
-    """使用AWS Bedrock优化文本"""
+    """使用AWS Bedrock的converse API优化文本"""
     try:
         # 准备提示词
         prompt = OPTIMIZATION_PROMPT.format(text=text)
         
-        # 调用Bedrock模型
-        response = bedrock_client.invoke_model(
+        # 使用converse API调用Bedrock模型
+        response = bedrock_client.converse(
             modelId=BEDROCK_MODEL_ID,
-            body=json.dumps({
-                "anthropic_version": BEDROCK_VERSION,
-                "max_tokens": BEDROCK_MAX_TOKENS,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            })
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": BEDROCK_MAX_TOKENS,
+                "temperature": 0.0,
+                "topP": 1.0
+            }
         )
         
-        response_body = json.loads(response['body'].read().decode('utf-8'))
-        return response_body['content'][0]['text']
+        # 从响应中提取文本
+        output = response.get("output", {})
+        message = output.get("message", {})
+        content = message.get("content", [])
+        
+        # 合并所有文本内容
+        result_text = ""
+        for item in content:
+            if "text" in item:
+                result_text += item["text"]
+        
+        return result_text if result_text else "无法获取优化文本"
         
     except Exception as e:
-        raise Exception(f"使用Bedrock优化文本失败: {str(e)}")
+        # 如果converse API失败，回退到invoke_model API
+        try:
+            print(f"converse API失败: {str(e)}，尝试使用invoke_model API")
+            
+            response = bedrock_client.invoke_model(
+                modelId=BEDROCK_MODEL_ID,
+                body=json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": BEDROCK_MAX_TOKENS,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                })
+            )
+            
+            # 解析响应
+            response_body = json.loads(response['body'].read().decode('utf-8'))
+            return response_body['content'][0]['text']
+            
+        except Exception as inner_e:
+            raise Exception(f"使用Bedrock优化文本失败: 首先尝试converse API: {str(e)}，然后尝试invoke_model API: {str(inner_e)}")
 
 def process_audio(audio_file):
     """处理音频文件并返回转录和优化结果"""
