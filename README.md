@@ -2,6 +2,8 @@
 
 This application provides a web-based interface for voice input, which is then transcribed using AWS Transcribe and optimized using AWS Bedrock's Claude 3 Sonnet (Nova Lite) model.
 
+[中文文档](README.zh.md)
+
 ## Features
 
 - Voice recording through your computer's microphone
