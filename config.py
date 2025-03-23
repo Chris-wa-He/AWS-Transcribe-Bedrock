@@ -17,7 +17,6 @@ DEFAULT_AUDIO_FORMAT = 'wav'
 # Bedrock模型配置
 BEDROCK_MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
 BEDROCK_MAX_TOKENS = 1000
-BEDROCK_VERSION = "bedrock-2023-05-31"
 
 # 提示词模板
 OPTIMIZATION_PROMPT = """Please optimize and correct the following transcribed text. 
