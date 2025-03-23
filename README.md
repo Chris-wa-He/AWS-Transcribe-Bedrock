@@ -13,6 +13,7 @@ This application provides a web-based interface for voice input, which is then t
 - Support for both microphone recording and audio file upload
 - Model selection from available AWS Bedrock models in your account
 - Customizable prompts for text optimization
+- Comprehensive logging system with rotating log files
 
 ## Prerequisites
 
