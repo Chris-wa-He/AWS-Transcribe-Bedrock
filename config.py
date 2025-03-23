@@ -9,7 +9,10 @@ load_dotenv()
 
 # AWS配置
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
-AUDIO_FORMAT = 'wav'
+
+# Transcribe支持的音频格式
+SUPPORTED_AUDIO_FORMATS = ['mp3', 'mp4', 'wav', 'flac', 'ogg', 'amr', 'webm']
+DEFAULT_AUDIO_FORMAT = 'wav'
 
 # Bedrock模型配置
 BEDROCK_MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"

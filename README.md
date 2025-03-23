@@ -5,6 +5,7 @@ This application provides a web-based interface for voice input, which is then t
 ## Features
 
 - Voice recording through your computer's microphone
+- Audio file upload support for multiple formats (mp3, mp4, wav, flac, ogg, amr, webm)
 - Real-time transcription using AWS Transcribe (supports multiple languages with automatic detection)
 - Text optimization using AWS Bedrock's Claude 3 Sonnet model
 - Side-by-side display of original transcription and optimized text
@@ -47,11 +48,19 @@ This application provides a web-based interface for voice input, which is then t
    python main.py
    ```
 
-2. Click "Start Recording" to begin recording your voice.
+2. The application will open in your web browser with two tabs:
+   - **录音 (Recording)**: Use your microphone to record audio
+   - **上传音频 (Upload Audio)**: Upload pre-recorded audio files
 
-3. Speak clearly into your microphone.
+3. For microphone recording:
+   - Click "Start Recording" to begin recording your voice
+   - Speak clearly into your microphone
+   - Click "Stop Recording" when you're done
+   - Click "处理录音 (Process Recording)" or wait for automatic processing
 
-4. Click "Stop Recording" when you're done.
+4. For file upload:
+   - Click "Upload" and select an audio file (supported formats: mp3, mp4, wav, flac, ogg, amr, webm)
+   - Click "处理上传的音频 (Process Uploaded Audio)" or wait for automatic processing
 
 5. The application will process your audio:
    - The left panel will show the raw transcription from AWS Transcribe
