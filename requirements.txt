@@ -1,0 +1,3 @@
+boto3==1.34.69
+gradio==5.22.0
+python-dotenv==1.0.1
