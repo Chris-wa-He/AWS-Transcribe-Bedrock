@@ -11,6 +11,8 @@ This application provides a web-based interface for voice input, which is then t
 - Side-by-side display of original transcription and optimized text
 - Web-based interface using Gradio
 - Support for both microphone recording and audio file upload
+- Model selection from available AWS Bedrock models in your account
+- Customizable prompts for text optimization
 
 ## Prerequisites
 
@@ -52,17 +54,22 @@ This application provides a web-based interface for voice input, which is then t
    - **录音 (Recording)**: Use your microphone to record audio
    - **上传音频 (Upload Audio)**: Upload pre-recorded audio files
 
-3. For microphone recording:
+3. Advanced Settings (optional):
+   - Click on "Advanced Settings" to expand additional options
+   - Select a different Bedrock model from the dropdown list
+   - Customize the prompt used for text optimization
+
+4. For microphone recording:
    - Click "Start Recording" to begin recording your voice
    - Speak clearly into your microphone
    - Click "Stop Recording" when you're done
-   - Click "处理录音 (Process Recording)" or wait for automatic processing
+   - Click "处理录音 (Process Recording)" to start processing
 
-4. For file upload:
+5. For file upload:
    - Click "Upload" and select an audio file (supported formats: mp3, mp4, wav, flac, ogg, amr, webm)
-   - Click "处理上传的音频 (Process Uploaded Audio)" or wait for automatic processing
+   - Click "处理上传的音频 (Process Uploaded Audio)" to start processing
 
-5. The application will process your audio:
+6. The application will process your audio:
    - The left panel will show the raw transcription from AWS Transcribe
    - The right panel will show the optimized text from AWS Bedrock
 
