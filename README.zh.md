@@ -1,44 +1,73 @@
 # 语音助手 - AWS Transcribe 和 Bedrock
 
-本应用程序提供了一个基于网页的语音输入界面，使用 AWS Transcribe 进行转录，并使用 AWS Bedrock 的 Claude 3 Sonnet (Nova Lite) 模型进行优化。
+本应用程序提供了一个基于网页的语音输入界面，使用 AWS Transcribe 进行转录，并使用 AWS Bedrock 的 Claude 和 Nova 模型进行优化。
 
 ## 功能特点
 
 - 通过计算机麦克风进行语音录制
 - 支持多种音频格式上传（mp3, mp4, wav, flac, ogg, amr, webm）
 - 使用 AWS Transcribe 进行实时转录（支持多种语言，自动检测）
-- 使用 AWS Bedrock 的 Claude 3 Sonnet 模型优化文本
+- 使用 AWS Bedrock 的 Claude 和 Nova 模型优化文本
 - 并排显示原始转录和优化后的文本
 - 基于 Gradio 的网页界面
 - 支持麦克风录音和音频文件上传
-- 从账户中可用的 AWS Bedrock 模型中选择模型
+- **Claude 和 Nova 模型选择**，从您账户中可用的 AWS Bedrock 模型中选择
 - 可自定义文本优化提示词
 - 全面的日志系统，支持日志文件自动轮换
+- 增强的错误处理和配置验证
 
 ## 系统要求
 
-- Python 3.8+
+- Python 3.10+
+- Poetry（用于依赖管理）
 - AWS 账户，需要访问：
   - Amazon Transcribe
-  - Amazon Bedrock（需要有 Claude 3 Sonnet 模型访问权限）
+  - Amazon Bedrock（需要有 Claude 和 Nova 模型访问权限）
   - Amazon S3（用于存储音频文件）
 - 已配置 AWS 凭证
 
 ## 安装步骤
 
+### 方法一：使用 Poetry（推荐）
+
 1. 克隆此仓库：
+   ```bash
+   git clone https://github.com/yourusername/transcribe-test.git
+   cd transcribe-test
    ```
+
+2. 如果尚未安装 Poetry，请先安装：
+   ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+
+3. 使用 Poetry 安装依赖：
+   ```bash
+   poetry install
+   ```
+
+4. 基于提供的 `.env.example` 创建 `.env` 文件：
+   ```bash
+   cp .env.example .env
+   ```
+
+5. 编辑 `.env` 文件，填入您的 AWS 凭证和 S3 存储桶信息。
+
+### 方法二：使用 pip（传统方式）
+
+1. 克隆此仓库：
+   ```bash
    git clone https://github.com/yourusername/transcribe-test.git
    cd transcribe-test
    ```
 
 2. 安装所需依赖：
-   ```
+   ```bash
    pip install -r requirements.txt
    ```
 
 3. 基于提供的 `.env.example` 创建 `.env` 文件：
-   ```
+   ```bash
    cp .env.example .env
    ```
 
@@ -46,8 +75,23 @@
 
 ## 使用方法
 
+### 使用 Poetry（推荐）
+
 1. 运行应用程序：
+   ```bash
+   poetry run python main.py
    ```
+   
+   或者激活虚拟环境后直接运行：
+   ```bash
+   poetry shell
+   python main.py
+   ```
+
+### 使用 pip（传统方式）
+
+1. 运行应用程序：
+   ```bash
    python main.py
    ```
 
@@ -57,7 +101,7 @@
 
 3. 高级设置（可选）：
    - 点击"高级设置"展开额外选项
-   - 从下拉列表中选择不同的 Bedrock 模型
+   - 从下拉列表中选择不同的 Bedrock 模型（Claude 和 Nova 系列）
    - 自定义用于文本优化的提示词
 
 4. 麦克风录音：
@@ -79,12 +123,41 @@
 - 应用程序使用 AWS Transcribe 的自动语言识别功能。
 - 您需要创建一个 S3 存储桶用于存储临时音频文件。
 - 确保您的 AWS 账户具有 Transcribe 和 Bedrock 服务的必要权限。
+- **模型兼容性**：应用程序使用智能推理配置文件回退机制。当模型需要推理配置文件时（如 Claude 3.5 Sonnet v2、Claude 3.7 Sonnet、Claude 4 系列），系统会自动检测并无缝切换到相应的推理配置文件，无需用户干预。
+
+## 开发和测试
+
+项目包含了全面的 Makefile，提供各种开发和测试命令：
+
+```bash
+# 基本命令
+make install                # 使用 Poetry 安装依赖
+make run                    # 运行语音助手应用程序
+make clean                  # 清理缓存和临时文件
+
+# 代码质量
+make lint                   # 使用 flake8 进行代码检查
+make format                 # 使用 black 格式化代码
+make test                   # 使用 pytest 运行测试
+
+# 配置和诊断
+make config-test            # 测试应用程序配置
+make aws-diagnose           # 诊断 AWS 凭证和权限
+
+# 模型测试
+make model-test             # 测试 Bedrock 模型可用性
+make model-validation       # 测试模型兼容性和回退逻辑
+make inference-profile-test # 测试推理配置文件功能
+make fallback-test          # 测试智能回退机制
+```
+
+详细的开发信息请参阅 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 ## 故障排除
 
 - 如果遇到身份验证错误，请验证 `.env` 文件中的 AWS 凭证。
 - 对于音频录制问题，请检查麦克风设置和权限。
-- 如果 Bedrock 处理失败，请确保您的 AWS 账户有权访问 Claude 3 Sonnet 模型。
+- 如果 Bedrock 处理失败，请确保您的 AWS 账户有权访问 Claude 和 Nova 模型。
 
 ## 日志系统
 

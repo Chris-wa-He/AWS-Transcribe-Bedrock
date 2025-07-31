@@ -24,9 +24,14 @@ var/
 venv/
 ENV/
 env/
+.venv/
+
+# Poetry
+poetry.lock
 
 # Environment variables
 .env
+config/.env
 
 # Logs
 logs/
@@ -53,3 +58,13 @@ Thumbs.db
 .vscode/
 *.sublime-project
 *.sublime-workspace
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
