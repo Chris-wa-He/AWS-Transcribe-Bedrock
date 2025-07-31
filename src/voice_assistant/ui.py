@@ -49,6 +49,13 @@ def create_ui():
                 info="选择用于优化文本的AWS Bedrock模型 | Select AWS Bedrock model for text optimization",
             )
 
+            # 发言者划分开关 | Speaker diarization toggle
+            speaker_diarization_checkbox = gr.Checkbox(
+                label="启用发言者划分 | Enable Speaker Diarization",
+                value=False,
+                info="识别并标记不同发言者的语音片段 | Identify and label speech segments from different speakers",
+            )
+
             custom_prompt = gr.Textbox(
                 label="自定义提示词 | Custom Prompt",
                 placeholder="输入自定义提示词，使用{text}作为转录文本的占位符 | Enter custom prompt, use {text} as placeholder for transcribed text",
@@ -62,6 +69,11 @@ def create_ui():
             - 使用 `{text}` 作为转录文本的占位符 | Use `{text}` as placeholder for transcribed text
             - 如果不包含 `{text}`，转录文本将被附加到提示词后面 | If `{text}` is not included, transcribed text will be appended to the prompt
             - 留空则使用默认提示词 | Leave empty to use default prompt
+            
+            **发言者划分说明 | Speaker Diarization Instructions**:
+            - 启用后可识别最多10个不同的发言者 | When enabled, can identify up to 10 different speakers
+            - 适用于会议、访谈等多人对话场景 | Suitable for meetings, interviews, and multi-person conversations
+            - 会增加处理时间但提供更详细的转录结果 | Increases processing time but provides more detailed transcription results
             """
             )
 
@@ -135,13 +147,31 @@ def create_ui():
                     lines=10,
                 )
 
+        # 语言识别和发言者信息显示区域 | Language identification and speaker information display area
+        with gr.Row():
+            with gr.Column():
+                language_info = gr.Textbox(
+                    label="语言识别信息 | Language Identification",
+                    placeholder="识别的语言信息将显示在这里... | Identified language information will be displayed here...",
+                    lines=2,
+                    interactive=False,
+                )
+
+            with gr.Column():
+                speaker_info = gr.Textbox(
+                    label="发言者信息 | Speaker Information",
+                    placeholder="发言者划分信息将显示在这里... | Speaker diarization information will be displayed here...",
+                    lines=8,
+                    interactive=False,
+                )
+
         # 状态信息 | Status information
         status_info = gr.Markdown(
             "系统就绪，等待音频输入... | System ready, waiting for audio input..."
         )
 
         # 处理函数 | Processing function
-        def process_with_options(audio_file, model_name, prompt):
+        def process_with_options(audio_file, model_name, prompt, enable_speaker_diarization):
             """
             处理音频文件的包装函数，包含增强的错误处理
             Wrapper function for processing audio files with enhanced error handling
@@ -152,6 +182,8 @@ def create_ui():
                     return (
                         "❌ 错误: 请先录制或上传音频文件 | Error: Please record or upload an audio file first",
                         "",
+                        "",
+                        "",
                     )
 
                 # 获取选择的模型ID | Get selected model ID
@@ -160,6 +192,8 @@ def create_ui():
                     return (
                         f"❌ 错误: 无效的模型选择: {model_name} | Error: Invalid model selection: {model_name}",
                         "",
+                        "",
+                        "",
                     )
 
                 # 验证提示词 | Validate prompt
@@ -167,14 +201,16 @@ def create_ui():
                     return (
                         "❌ 错误: 自定义提示词过长，请限制在10000字符以内 | Error: Custom prompt too long, please limit to 10000 characters",
                         "",
+                        "",
+                        "",
                     )
 
                 # 处理音频 | Process audio
-                return process_audio(audio_file, model_id, prompt)
+                return process_audio(audio_file, model_id, prompt, enable_speaker_diarization)
 
             except Exception as e:
                 error_msg = f"❌ 处理失败: {str(e)} | Processing failed: {str(e)}"
-                return error_msg, ""
+                return error_msg, "", "", ""
 
         # 状态更新函数 | Status update functions
         def update_status_recording():
@@ -196,8 +232,8 @@ def create_ui():
             outputs=[status_info],
         ).then(
             fn=process_with_options,
-            inputs=[audio_input_mic, model_dropdown, custom_prompt],
-            outputs=[transcribe_output, llm_output],
+            inputs=[audio_input_mic, model_dropdown, custom_prompt, speaker_diarization_checkbox],
+            outputs=[transcribe_output, llm_output, language_info, speaker_info],
             show_progress=True,
         ).then(
             fn=update_status_completed,
@@ -211,8 +247,8 @@ def create_ui():
             outputs=[status_info],
         ).then(
             fn=process_with_options,
-            inputs=[audio_input_upload, model_dropdown, custom_prompt],
-            outputs=[transcribe_output, llm_output],
+            inputs=[audio_input_upload, model_dropdown, custom_prompt, speaker_diarization_checkbox],
+            outputs=[transcribe_output, llm_output, language_info, speaker_info],
             show_progress=True,
         ).then(
             fn=update_status_completed,

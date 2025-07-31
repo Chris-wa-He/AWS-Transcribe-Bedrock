@@ -27,6 +27,12 @@ from .logger import (
     log_llm_response,
 )
 
+# 导入输出格式化模块 | Import output formatting module
+from .output_formatter import format_combined_output
+
+# 导入发言者文本提取模块 | Import speaker text extraction module
+from .speaker_text_extractor import extract_speaker_segments
+
 # 初始化AWS客户端 | Initialize AWS clients
 # 支持AWS Profile配置 | Support AWS Profile configuration
 def get_boto3_session():
@@ -393,10 +399,18 @@ def upload_to_s3(audio_path):
 
 
 @log_service_call("transcribe")
-def transcribe_audio(s3_uri, audio_path):
+def transcribe_audio(s3_uri, audio_path, enable_speaker_diarization=False):
     """
-    使用AWS Transcribe转录音频并返回转录文本
-    Transcribe audio using AWS Transcribe and return transcription text
+    使用AWS Transcribe转录音频并返回转录文本和元数据
+    Transcribe audio using AWS Transcribe and return transcription text and metadata
+    
+    Args:
+        s3_uri: S3音频文件URI
+        audio_path: 本地音频文件路径
+        enable_speaker_diarization: 是否启用发言者划分
+    
+    Returns:
+        dict: 包含转录文本、识别语言、发言者信息等的字典
     """
     try:
         # 创建转录任务 | Create transcription job
@@ -406,16 +420,26 @@ def transcribe_audio(s3_uri, audio_path):
         media_format = get_media_format(audio_path)
 
         logger.info(
-            f"开始转录任务 {job_name}，媒体格式: {media_format} | Starting transcription job {job_name}, media format: {media_format}"
+            f"开始转录任务 {job_name}，媒体格式: {media_format}，发言者划分: {enable_speaker_diarization} | Starting transcription job {job_name}, media format: {media_format}, speaker diarization: {enable_speaker_diarization}"
         )
 
-        # 使用自动语言识别 | Use automatic language identification
-        transcribe_client.start_transcription_job(
-            TranscriptionJobName=job_name,
-            Media={"MediaFileUri": s3_uri},
-            MediaFormat=media_format,
-            IdentifyLanguage=True,  # 启用自动语言识别 | Enable automatic language identification
-        )
+        # 构建转录任务参数 | Build transcription job parameters
+        job_params = {
+            "TranscriptionJobName": job_name,
+            "Media": {"MediaFileUri": s3_uri},
+            "MediaFormat": media_format,
+            "IdentifyLanguage": True,  # 启用自动语言识别 | Enable automatic language identification
+        }
+
+        # 如果启用发言者划分，添加相关设置 | If speaker diarization is enabled, add related settings
+        if enable_speaker_diarization:
+            job_params["Settings"] = {
+                "ShowSpeakerLabels": True,
+                "MaxSpeakerLabels": 10,  # 最多识别10个发言者 | Maximum 10 speakers
+            }
+
+        # 启动转录任务 | Start transcription job
+        transcribe_client.start_transcription_job(**job_params)
 
         # 等待转录完成 | Wait for transcription to complete
         start_time = time.time()
@@ -450,16 +474,60 @@ def transcribe_audio(s3_uri, audio_path):
             identified_language = status["TranscriptionJob"].get(
                 "LanguageCode", "unknown"
             )
+            
+            # 获取语言置信度 | Get language confidence
+            language_identification = status["TranscriptionJob"].get(
+                "LanguageIdentification", []
+            )
+            language_confidence = 0.0
+            if language_identification:
+                for lang_info in language_identification:
+                    if lang_info.get("LanguageCode") == identified_language:
+                        language_confidence = lang_info.get("Score", 0.0)
+                        break
+
             logger.info(
-                f"转录完成，识别的语言: {identified_language} | Transcription completed, identified language: {identified_language}"
+                f"转录完成，识别的语言: {identified_language} (置信度: {language_confidence:.2f}) | Transcription completed, identified language: {identified_language} (confidence: {language_confidence:.2f})"
             )
 
+            # 获取基本转录文本 | Get basic transcription text
             transcript_text = transcript_data["results"]["transcripts"][0]["transcript"]
+            
+            # 构建返回结果 | Build return result
+            result = {
+                "transcript": transcript_text,
+                "language_code": identified_language,
+                "language_confidence": language_confidence,
+                "speaker_labels": None,
+                "segments": None
+            }
+
+            # 如枟启用了发言者划分，处理发言者信息 | If speaker diarization is enabled, process speaker information
+            if enable_speaker_diarization:
+                # 使用专门的文本提取模块处理发言者文本 | Use specialized text extraction module to process speaker text
+                speaker_segments = extract_speaker_segments(transcript_data, enable_speaker_diarization)
+                
+                if speaker_segments:
+                    result["speaker_labels"] = transcript_data["results"].get("speaker_labels")
+                    result["segments"] = speaker_segments
+                    
+                    logger.info(
+                        f"发言者划分完成，识别到 {len(set(seg['speaker'] for seg in speaker_segments))} 个发言者，共 {len(speaker_segments)} 个片段 | Speaker diarization completed, identified {len(set(seg['speaker'] for seg in speaker_segments))} speakers with {len(speaker_segments)} segments"
+                    )
+                    
+                    # 记录每个片段的详细信息用于调试
+                    for i, seg in enumerate(speaker_segments[:3]):  # 只记录前3个片段
+                        logger.debug(
+                            f"片段 {i+1}: {seg['speaker']} ({seg['start_time']:.1f}s-{seg['end_time']:.1f}s) - '{seg['text'][:50]}...' | Segment {i+1}: {seg['speaker']} ({seg['start_time']:.1f}s-{seg['end_time']:.1f}s) - '{seg['text'][:50]}...'"
+                        )
+                else:
+                    logger.warning("发言者划分已启用但未能提取到有效的发言者片段 | Speaker diarization enabled but failed to extract valid speaker segments")
+
             logger.info(
                 f"转录文本长度: {len(transcript_text)} 字符 | Transcription text length: {len(transcript_text)} characters"
             )
 
-            return transcript_text
+            return result
         else:
             error_reason = status["TranscriptionJob"].get(
                 "FailureReason", "未知原因 | Unknown reason"
@@ -559,17 +627,26 @@ def optimize_with_bedrock(text, model_id=None, custom_prompt=None):
 
 
 @log_service_call("process_audio")
-def process_audio(audio_file, model_id=None, custom_prompt=None):
+def process_audio(audio_file, model_id=None, custom_prompt=None, enable_speaker_diarization=False):
     """
     处理音频文件并返回转录和优化结果
     Process audio file and return transcription and optimization results
+    
+    Args:
+        audio_file: 音频文件
+        model_id: Bedrock模型ID
+        custom_prompt: 自定义提示词
+        enable_speaker_diarization: 是否启用发言者划分
+    
+    Returns:
+        tuple: (转录结果字典, 优化文本, 语言信息, 发言者信息)
     """
     try:
         # 增强输入验证 | Enhanced input validation
         if not audio_file:
             error_msg = "未提供音频文件 | No audio file provided"
             logger.warning(error_msg)
-            return f"输入错误: {error_msg} | Input error: {error_msg}", ""
+            return f"输入错误: {error_msg} | Input error: {error_msg}", "", "", ""
 
         # 检查音频文件类型 | Check audio file type
         if isinstance(audio_file, str):
@@ -580,23 +657,23 @@ def process_audio(audio_file, model_id=None, custom_prompt=None):
         else:
             error_msg = f"不支持的音频文件类型: {type(audio_file)} | Unsupported audio file type: {type(audio_file)}"
             logger.error(error_msg)
-            return f"输入错误: {error_msg} | Input error: {error_msg}", ""
+            return f"输入错误: {error_msg} | Input error: {error_msg}", "", "", ""
 
         # 验证音频文件路径 | Validate audio file path
         if not audio_path or audio_path.strip() == "":
             error_msg = "音频文件路径为空 | Audio file path is empty"
             logger.warning(error_msg)
-            return f"输入错误: {error_msg} | Input error: {error_msg}", ""
+            return f"输入错误: {error_msg} | Input error: {error_msg}", "", "", ""
 
         logger.info(
-            f"开始处理音频文件: {audio_path} (类型: {type(audio_file)}) | Start processing audio file: {audio_path} (type: {type(audio_file)})"
+            f"开始处理音频文件: {audio_path} (类型: {type(audio_file)})，发言者划分: {enable_speaker_diarization} | Start processing audio file: {audio_path} (type: {type(audio_file)}), speaker diarization: {enable_speaker_diarization}"
         )
 
         # 检查环境配置 | Check environment configuration
         if not S3_BUCKET_NAME:
             error_msg = "S3存储桶名称未配置，请检查 .env 文件中的 S3_BUCKET_NAME | S3 bucket name not configured, please check S3_BUCKET_NAME in .env file"
             logger.error(error_msg)
-            return f"配置错误: {error_msg} | Configuration error: {error_msg}", ""
+            return f"配置错误: {error_msg} | Configuration error: {error_msg}", "", "", ""
 
         # 上传到S3 | Upload to S3
         try:
@@ -605,11 +682,11 @@ def process_audio(audio_file, model_id=None, custom_prompt=None):
             logger.error(
                 f"S3上传失败: {str(upload_error)} | S3 upload failed: {str(upload_error)}"
             )
-            return f"上传错误: {str(upload_error)} | Upload error: {str(upload_error)}", ""
+            return f"上传错误: {str(upload_error)} | Upload error: {str(upload_error)}", "", "", ""
 
         # 转录音频 | Transcribe audio
         try:
-            transcript_text = transcribe_audio(s3_uri, audio_path)
+            transcribe_result = transcribe_audio(s3_uri, audio_path, enable_speaker_diarization)
         except Exception as transcribe_error:
             logger.error(
                 f"转录失败: {str(transcribe_error)} | Transcription failed: {str(transcribe_error)}"
@@ -617,7 +694,15 @@ def process_audio(audio_file, model_id=None, custom_prompt=None):
             return (
                 f"转录错误: {str(transcribe_error)} | Transcription error: {str(transcribe_error)}",
                 "",
+                "",
+                ""
             )
+
+        # 提取转录文本 | Extract transcription text
+        transcript_text = transcribe_result["transcript"]
+        
+        # 使用新的格式化模块生成优化的输出 | Use new formatting module to generate optimized output
+        language_info, speaker_info = format_combined_output(transcribe_result, enable_speaker_diarization)
 
         # 使用Bedrock优化 | Optimize using Bedrock
         try:
@@ -632,11 +717,13 @@ def process_audio(audio_file, model_id=None, custom_prompt=None):
             return (
                 transcript_text,
                 f"优化错误: {str(bedrock_error)} | Optimization error: {str(bedrock_error)}",
+                language_info,
+                speaker_info
             )
 
         logger.info("音频处理完成 | Audio processing completed")
-        return transcript_text, optimized_text
+        return transcript_text, optimized_text, language_info, speaker_info
 
     except Exception as e:
         logger.error(f"处理音频失败: {str(e)} | Failed to process audio: {str(e)}")
-        return f"处理错误: {str(e)} | Processing error: {str(e)}", ""
+        return f"处理错误: {str(e)} | Processing error: {str(e)}", "", "", ""

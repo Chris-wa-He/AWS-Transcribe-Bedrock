@@ -2,13 +2,15 @@
 
 This application provides a web-based interface for voice input, which is then transcribed using AWS Transcribe and optimized using AWS Bedrock's Claude and Nova models.
 
-[中文文档](README.zh.md) | [项目结构](docs/PROJECT_STRUCTURE.md)
+[中文文档](README.zh.md) | [项目结构](PROJECT_STATUS.md)
 
 ## Features
 
 - Voice recording through your computer's microphone
 - Audio file upload support for multiple formats (mp3, mp4, wav, flac, ogg, amr, webm)
 - Real-time transcription using AWS Transcribe (supports multiple languages with automatic detection)
+- **🆕 Language identification display** with confidence scores
+- **🆕 Speaker diarization** to identify and label different speakers in audio
 - Text optimization using AWS Bedrock's Claude and Nova models
 - Side-by-side display of original transcription and optimized text
 - Web-based interface using Gradio
@@ -144,21 +146,46 @@ This application provides a web-based interface for voice input, which is then t
 3. Advanced Settings (optional):
    - Click on "Advanced Settings" to expand additional options
    - Select a different Bedrock model from the dropdown list (Claude and Nova series)
+   - **🆕 Enable Speaker Diarization**: Check this box to identify and label different speakers in multi-person conversations
    - Customize the prompt used for text optimization
 
-4. For microphone recording:
+4. **🆕 New Features**:
+   - **Language Identification**: Automatically displays the detected language and confidence score
+   - **Speaker Diarization**: When enabled, identifies up to 10 different speakers and shows their speech segments with timestamps
+
+5. For microphone recording:
    - Click "Start Recording" to begin recording your voice
    - Speak clearly into your microphone
    - Click "Stop Recording" when you're done
    - Click "处理录音 (Process Recording)" to start processing
 
-5. For file upload:
+6. For file upload:
    - Click "Upload" and select an audio file (supported formats: mp3, mp4, wav, flac, ogg, amr, webm)
    - Click "处理上传的音频 (Process Uploaded Audio)" to start processing
 
-6. The application will process your audio:
+7. The application will process your audio:
    - The left panel will show the raw transcription from AWS Transcribe
    - The right panel will show the optimized text from AWS Bedrock
+   - **🆕 Enhanced Language Information** will be displayed with friendly language names, confidence levels, and language codes
+   - **🆕 Rich Speaker Information** will be displayed with speaker statistics, time distribution, and detailed conversation timeline (if enabled)
+
+## 🎨 Enhanced Output Display
+
+The application now features beautifully formatted output with:
+
+### Language Identification Display
+- 🌍 **Friendly Language Names**: "英语(美国) | English (US)" instead of "en-US"
+- 📊 **Descriptive Confidence Levels**: "非常高 | Very High" for scores ≥0.9
+- 🔤 **Complete Language Information**: Code, name, and confidence in one view
+
+### Speaker Diarization Display
+- 👥 **Speaker Statistics**: Total speakers, duration, and language information
+- 📈 **Speaker Distribution**: Time percentage and segment count for each speaker
+- 📝 **Detailed Timeline**: Chronological conversation with formatted timestamps
+- 🕐 **Time Formatting**: "00:05-00:10 (时长 00:05 | Duration 00:05)"
+- 👤 **Friendly Speaker Names**: "发言者A | Speaker A" instead of "spk_0"
+
+For detailed information about the enhanced output format, see [docs/OUTPUT_OPTIMIZATION.md](docs/OUTPUT_OPTIMIZATION.md).
 
 ## Notes
 
@@ -166,34 +193,6 @@ This application provides a web-based interface for voice input, which is then t
 - You need to have an S3 bucket created for storing the temporary audio files.
 - Make sure your AWS account has the necessary permissions for Transcribe and Bedrock services.
 - **Model Compatibility**: The application uses an intelligent inference profile fallback mechanism. When a model requires an inference profile (like Claude 3.5 Sonnet v2, Claude 3.7 Sonnet, Claude 4 series), the system automatically detects this and seamlessly switches to the appropriate inference profile without user intervention.
-
-## Development and Testing
-
-The project includes a comprehensive Makefile with various development and testing commands:
-
-```bash
-# Basic commands
-make install                # Install dependencies using Poetry
-make run                    # Run the voice assistant application
-make clean                  # Clean up cache and temporary files
-
-# Code quality
-make lint                   # Run code linting with flake8
-make format                 # Format code with black
-make test                   # Run tests with pytest
-
-# Configuration and diagnostics
-make config-test            # Test application configuration
-make aws-diagnose           # Diagnose AWS credentials and permissions
-
-# Model testing
-make model-test             # Test Bedrock model availability
-make model-validation       # Test model compatibility and fallback logic
-make inference-profile-test # Test inference profile functionality
-make fallback-test          # Test intelligent fallback mechanism
-```
-
-For detailed development information, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Troubleshooting
 
