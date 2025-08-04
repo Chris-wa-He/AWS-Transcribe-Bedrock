@@ -32,8 +32,8 @@
 
 1. 克隆此仓库：
    ```bash
-   git clone https://github.com/yourusername/transcribe-test.git
-   cd transcribe-test
+   git clone git@github.com:Chris-wa-He/AWS-Transcribe-Bedrock.git
+   cd AWS-Transcribe-Bedrock
    ```
 
 2. 如果尚未安装 Poetry，请先安装：
@@ -57,8 +57,8 @@
 
 1. 克隆此仓库：
    ```bash
-   git clone https://github.com/yourusername/transcribe-test.git
-   cd transcribe-test
+   git clone git@github.com:Chris-wa-He/AWS-Transcribe-Bedrock.git
+   cd AWS-Transcribe-Bedrock
    ```
 
 2. 安装所需依赖：

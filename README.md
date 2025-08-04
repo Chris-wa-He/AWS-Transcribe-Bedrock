@@ -36,8 +36,8 @@ This application provides a web-based interface for voice input, which is then t
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/transcribe-test.git
-   cd transcribe-test
+   git clone git@github.com:Chris-wa-He/AWS-Transcribe-Bedrock.git
+   cd AWS-Transcribe-Bedrock
    ```
 
 2. Install Poetry if you haven't already:
@@ -81,8 +81,8 @@ This application provides a web-based interface for voice input, which is then t
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/transcribe-test.git
-   cd transcribe-test
+   git clone git@github.com:Chris-wa-He/AWS-Transcribe-Bedrock.git
+   cd AWS-Transcribe-Bedrock
    ```
 
 2. Install the required dependencies:
